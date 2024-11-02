@@ -1,10 +1,12 @@
 ### OpenAI Model.  Import the key
+### python3 -m streamlit run chat_data_functions.py
 from dotenv import load_dotenv
 
 load_dotenv()
 import os
 
 os.environ.get('OPENAI_API_KEY')
+os.environ.get('LLAMA_CLOUD_API_KEY')
 
 ## Call the functions
 
@@ -19,32 +21,35 @@ from llama_index.core import (
 from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.llms.openai import OpenAI
+from llama_parse import LlamaParse
 
 st.title("Your Subconscious")
 st.markdown("On first load, wait for your data to ingest")
 
-@st.cache_data
+@st.cache_resource
 def load_data():
     # The below loads the data
-
-    documents = SimpleDirectoryReader("data_7_7_24").load_data()
+    parser = LlamaParse(result_type="markdown")
+    documents = SimpleDirectoryReader("data_7_7_24", file_extractor=parser).load_data()
     index = VectorStoreIndex.from_documents(documents)
 
     # This sets memory limits
-    memory = ChatMemoryBuffer.from_defaults(token_limit=3000)
+    memory = ChatMemoryBuffer.from_defaults(token_limit=3500)
     llm = OpenAI(model="gpt-4")
 
     chat_engine = index.as_chat_engine(
-        chat_mode="condense_plus_context",
+        chat_mode="react",
         memory=memory,
         llm=llm,
+        streaming=True,
         system_prompt=(
-            "You are the subconscious of Dan Stern, who has written all of his thoughts down about his life. \
+            "You are an embodiment of knowledge of Dan Stern, who has written all of his thoughts down about his life. \
                 Use the files from his life to help him learn, improve and remember his life, specific to him.\
-                    Do not use generic responses. Each file name represents a day he wrote something down \
+                   Also provide deep knowledge on what he's already written and learned. Each file name represents a day he wrote something down \
                         or a specific idea or thing he wrote about.\
                          Everything needs to be specific to what he wrote.  You need to \
-                        read between the lines in many cases.  Keep your responses casual, not formal."
+                        read between the lines in many cases.  Keep your responses rich with information, \
+                        , informative, and not formal."
         ),
     )
     return chat_engine
@@ -58,8 +63,16 @@ def main():
 
     def chat_engine_generator(my_prompt):
         ## Chat Engine Generator
-        response = chat_engine.chat(my_prompt)
-        return response
+        response = chat_engine.stream_chat(my_prompt)
+        response_text = ""
+        message_placeholder = st.empty()
+
+        #stream the response
+        for token in response.response_gen:
+            response_text += str(token)
+            message_placeholder.markdown(response_text + "▌")
+        message_placeholder.markdown(response_text)
+        return response_text
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -80,7 +93,7 @@ def main():
         # Display assistant response in chat message container
         with st.chat_message("ai"):
             response = chat_engine_generator(prompt)
-            st.markdown(response)
+            #st.markdown(response)
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "ai", "content": response})
 
