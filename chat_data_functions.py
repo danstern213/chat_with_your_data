@@ -1,78 +1,69 @@
-### OpenAI Model.  Import the key
-### python3 -m streamlit run chat_data_functions.py
-from dotenv import load_dotenv
-
-load_dotenv()
-import os
-
-os.environ.get('OPENAI_API_KEY')
-os.environ.get('LLAMA_CLOUD_API_KEY')
-
-## Call the functions
-
 import streamlit as st
-
-from llama_index.core import (
-    VectorStoreIndex,
-    SimpleDirectoryReader,
-    StorageContext,
-    load_index_from_storage,
-)
-from llama_index.core import Settings
-from llama_index.core.memory import ChatMemoryBuffer
+from data_load import load_data
 from llama_index.llms.openai import OpenAI
-from llama_parse import LlamaParse
+from llama_index.core.memory import ChatMemoryBuffer
 
-st.title("Your Subconscious")
-st.markdown("On first load, wait for your data to ingest")
-
-@st.cache_resource
-def load_data():
-    # The below loads the data
-    parser = LlamaParse(result_type="markdown")
-    documents = SimpleDirectoryReader("data_7_7_24", file_extractor=parser).load_data()
-    index = VectorStoreIndex.from_documents(documents)
-
-    # This sets memory limits
+def create_chat_engine(base_index):
     memory = ChatMemoryBuffer.from_defaults(token_limit=3500)
-    llm = OpenAI(model="gpt-4")
-
-    chat_engine = index.as_chat_engine(
-        chat_mode="react",
+    llm = OpenAI(model="gpt-4", max_tokens=1000)
+    
+    return base_index.as_chat_engine(
+        chat_mode="context",
         memory=memory,
         llm=llm,
         streaming=True,
+        verbose=True,
         system_prompt=(
-            "You are an embodiment of knowledge of Dan Stern, who has written all of his thoughts down about his life. \
-                Use the files from his life to help him learn, improve and remember his life, specific to him.\
-                   Also provide deep knowledge on what he's already written and learned. Each file name represents a day he wrote something down \
-                        or a specific idea or thing he wrote about.\
-                         Everything needs to be specific to what he wrote.  You need to \
-                        read between the lines in many cases.  Keep your responses rich with information, \
-                        , informative, and not formal."
+            "You are an AI assistant analyzing Dan's personal documents. "
+            "Before responding to any query:\n"
+            "1. Thoroughly search ALL provided documents for relevant information\n"
+            "2. If you find ANY relevant information, include it in your response\n"
+            "3. Include direct quotes to support your answers\n"
+            "4. If you're not completely sure about something, explain what you found "
+            "and what might be missing"
         ),
+        similarity_top_k=4,
+        context_window=3000
     )
-    return chat_engine
 
-    
+def chat_engine_generator(chat_engine, my_prompt):
 
-### This is where the magic is going to happen
+    # Stream the response
+    response = chat_engine.stream_chat(my_prompt)
+    response_text = ""
+    message_placeholder = st.empty()
+
+    # Stream tokens
+    for token in response.response_gen:
+        response_text += str(token)
+        message_placeholder.markdown(response_text + "▌")
+    message_placeholder.markdown(response_text)
+
+    # Show source documents if enabled
+    if hasattr(response, 'source_nodes'):
+        st.write("---")
+        st.write("📚 Sources Used:")
+        for node in response.source_nodes:
+            with st.expander(f"Source: {node.metadata['filename']}"):
+                st.write(f"Score: {node.score:.4f}") 
+
+    return response_text
+
 def main():
-    chat_engine = load_data()
-    st.success("Success message")
+    st.title("My Big Brain")
 
-    def chat_engine_generator(my_prompt):
-        ## Chat Engine Generator
-        response = chat_engine.stream_chat(my_prompt)
-        response_text = ""
-        message_placeholder = st.empty()
+    # Add configuration controls in sidebar
+    st.sidebar.title("Chat Configuration")
+    # Reset button
+    if st.sidebar.button("Reset Chat"):
+        st.session_state.messages = []
+        st.experimental_rerun()
 
-        #stream the response
-        for token in response.response_gen:
-            response_text += str(token)
-            message_placeholder.markdown(response_text + "▌")
-        message_placeholder.markdown(response_text)
-        return response_text
+    # Load the base index (cached)
+    base_index = load_data()
+    
+    # Create chat engine with current settings
+    chat_engine = create_chat_engine(base_index)
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -92,8 +83,7 @@ def main():
 
         # Display assistant response in chat message container
         with st.chat_message("ai"):
-            response = chat_engine_generator(prompt)
-            #st.markdown(response)
+            response = chat_engine_generator(chat_engine, prompt)
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "ai", "content": response})
 
