@@ -1,0 +1,10 @@
+streamlit
+llama-index
+openai
+python-dotenv
+llama-parse
+pathlib
+dotenv
+os 
+time
+llama-parse
