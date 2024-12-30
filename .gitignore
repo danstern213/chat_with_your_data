@@ -1,0 +1,21 @@
+
+# Project specific
+data_7_7_24/    # If you want to exclude your data directory
+*.log
+.env
+.streamlit/secrets.toml
+combined_data/
+data
+md_to_text_converter
+test_streamlit.py
+roam_brain.ipynb
+.DS_Store
+Roam/
+combined_files.txt.zip
+combined_files_7_7_24/
+convert_roam_txt_to_single_file.ipynb
+data_7_7_24/
+llama_with_roam.ipynb
+md_to_text_converter.ipynb
+storage/
+

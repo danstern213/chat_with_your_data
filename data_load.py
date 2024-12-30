@@ -6,9 +6,6 @@ load_dotenv()
 import os
 import time
 
-os.environ.get('OPENAI_API_KEY')
-os.environ.get('LLAMA_CLOUD_API_KEY')
-
 ## Call the functions
 
 import streamlit as st
@@ -24,6 +21,12 @@ from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.llms.openai import OpenAI
 from llama_parse import LlamaParse
+
+# os.environ.get('OPENAI_API_KEY')
+# os.environ.get('LLAMA_CLOUD_API_KEY')
+
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+llama_api_key = st.secrets["LLAMA_CLOUD_API_KEY"]
 
 st.title("Your Subconscious")
 st.markdown("On first load, wait for your data to ingest")
