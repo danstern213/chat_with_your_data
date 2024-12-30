@@ -4,4 +4,3 @@ openai
 python-dotenv
 llama-parse
 pathlib 
-time
