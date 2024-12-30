@@ -12,6 +12,7 @@ os.environ.get('LLAMA_CLOUD_API_KEY')
 ## Call the functions
 
 import streamlit as st
+from pathlib import Path
 
 from llama_index.core import (
     VectorStoreIndex,
@@ -27,15 +28,24 @@ from llama_parse import LlamaParse
 st.title("Your Subconscious")
 st.markdown("On first load, wait for your data to ingest")
 
+DEFAULT_DATA_PATH = "data_7_7_24"
+
+if 'data_path' not in st.session_state:
+    st.session_state['data_path'] = DEFAULT_DATA_PATH
+
 @st.cache_resource
 def load_data():
     # The below loads the data
     with st.spinner("Loading documents"):
         start_time = time.time()
+    
+    if not Path(st.session_state.data_path).exists():
+        st.error(f"❌ Path {st.session_state.data_path} does not exist!")
+        return None
 
     parser = LlamaParse(result_type="markdown")
     documents = SimpleDirectoryReader(
-        "data_7_7_24", 
+        st.session_state.data_path, 
         file_extractor=parser,
     ).load_data()
 
