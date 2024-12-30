@@ -3,6 +3,5 @@ llama-index
 openai
 python-dotenv
 llama-parse
-pathlib
-os 
+pathlib 
 time
